@@ -2,6 +2,7 @@ pub mod error;
 pub mod pto;
 
 use error::ProtocolError;
+use log::warn;
 use pto::Proto;
 
 use super::handler::TransmitService;
@@ -145,11 +146,20 @@ impl DataTransferProtocol for BaseProtocol{
 
 
 pub fn get_type_for(raw:&[u8])->Result<TransmitService, ProtocolError>{
-     let raw_parsed = String::from_utf8_lossy(raw).to_string().trim().to_uppercase();
+     //slizcing data for converting to string
+     let raw_send = &raw[0..4];
+     let raw_receive = &raw[0..7];
 
-     return match raw_parsed.as_str() {
-          "SEND"=>Ok(TransmitService::Send),
-          "RECEIVE"=>Ok(TransmitService::Receive),
-          _=>Err(ProtocolError::SessionExtractionError("Could not determine wether the session was send or receive.".to_string()))
-     };
+     //parsing raw to string
+     let raw_parsed_send = String::from_utf8_lossy(raw_send).trim().replace("\n", "");
+     let raw_parsed_receive = String::from_utf8_lossy(raw_receive).trim().replace("\n", "");
+
+     if raw_parsed_send=="SEND"{
+          return Ok(TransmitService::Send)
+     }else if  raw_parsed_receive=="RECEIVE" {
+          return Ok(TransmitService::Receive);
+     }
+
+     Err(ProtocolError::SessionExtractionError("Could not determine wether the session was send or receive.".to_string()))
+
 }

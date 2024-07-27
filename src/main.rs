@@ -40,4 +40,11 @@ fn main(){
           client::def_client();
      }
 
+
+     // let a = vec![83, 69, 78, 68,0,0,0,0,0,0,0,0,0,0,0,0];
+     // println!("{}","SEND"=="SEND");
+     // let raw_parsed = String::from_utf8_lossy(&a).trim().replace("\n", "");
+
+     // println!("{}", "SEND"==raw_parsed);
+
 }

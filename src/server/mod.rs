@@ -10,7 +10,7 @@ pub mod container;         //Thread-stream container
 use std::{io::Read, net::{
      TcpListener,
      TcpStream
-}, process::exit, thread};
+}, process::exit, thread::{self, spawn, Thread}, time::Duration};
 use log::{info,error};
 
 use error::ServerError;
@@ -93,12 +93,19 @@ impl <'s> Server<'s>{
 
                let mut buf = [0;1024];
 
+               if let Err(e) = stream.read(&mut buf){
+                    error!("An error occured when type was being extracted from incoming stream {:?}", e);
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
+               }
+
                //readining initial handshake request
                let client_type:TransmitService = match get_type_for(&mut buf){
                     Ok(t)=>t,
                     Err(e)=>{
                          error!("An error occured when type was being extracted from incoming stream {:?}", e);
-                         exit(1);
+                         thread::sleep(Duration::from_secs(1));
+                         continue;
                     }
                };
 
@@ -108,17 +115,13 @@ impl <'s> Server<'s>{
                    TransmitService::Send=>{}
                }
 
+               let handle = spawn(||{
+
+               });
+
                //logging 
                let stream_id = &self.generate_id();
                info!("Incoming: {}", stream_id);
-
-               //reading the type of client receive or send
-               let mut buf = [0;1024];
-               stream.read(&mut buf).expect("type read error");
-               println!("{}",String::from_utf8_lossy(&buf));
-
-               //container creation
-
           }
 
           Ok(())
