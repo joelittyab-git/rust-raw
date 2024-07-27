@@ -93,7 +93,7 @@ impl <'s> Server<'s>{
 
                let mut buf = [0;1024];
 
-               //readinging initial handshake request
+               //readining initial handshake request
                let client_type:TransmitService = match get_type_for(&mut buf){
                     Ok(t)=>t,
                     Err(e)=>{
