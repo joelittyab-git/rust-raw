@@ -10,14 +10,13 @@ pub mod container;         //Thread-stream container
 use std::{io::Read, net::{
      TcpListener,
      TcpStream
-}, process::exit, thread::{self, spawn, Thread}, time::Duration};
+}, process::exit, sync::mpsc::{channel, Receiver, Sender}, thread:: {spawn, sleep}, time::Duration};
 use log::{info,error};
 
 use error::ServerError;
 use container::{ClientReceiverContainer, ClientSenderContainer};
-use protocol::pto::BaseProto;
-use handler::{StreamHandler, TransmitService};
-use protocol::{BaseProtocol, get_type_for};
+use handler::{StreamHandler, TransmitService, default_new};
+use protocol::{BaseProtocol, get_type_for, pto::BaseProto};
 
 
 /// A struct representing a [Server] instance that binds on an endpoint anc
@@ -32,18 +31,18 @@ use protocol::{BaseProtocol, get_type_for};
 /// - `send_container_pool`: Or scp, a pool of [ClientSenderContainer], contains the pool of active running send client thread handles and their channels
 /// - `receive_container_pool`: Or rcp, a pool of [ClientReceiverContainer], contains the pool of active running receive client thread handles and their channels
 #[derive(Debug)]
-pub struct Server<'a>{
+pub struct Server{
      host:String,
      port:i32,
      stream:Vec<TcpStream>,
-     send_container_pool:Vec<ClientSenderContainer<'a, BaseProto>>,
-     receive_container_pool:Vec<ClientReceiverContainer<'a, BaseProto>>,
-     stream_counter:i64       //maintains the id for each incoming stream
+     send_container_pool:Vec<ClientSenderContainer<BaseProto>>,
+     receive_container_pool:Vec<ClientReceiverContainer<BaseProto>>,
+     stream_counter:u64       //maintains the id for each incoming stream
 
 }
 
 
-impl <'s> Server<'s>{
+impl Server{
      /// Default constructor for the server. Use this constructor to initialize new [Server]
      /// 
      /// 
@@ -54,8 +53,8 @@ impl <'s> Server<'s>{
      /// 
      pub fn new(host:String, port:i32)->Self{
           //container pool initialization
-          let scp:Vec<ClientSenderContainer<'s, BaseProto>> = Vec::new();
-          let rcp:Vec<ClientReceiverContainer<'s, BaseProto>> = Vec::new();
+          let scp:Vec<ClientSenderContainer<BaseProto>> = Vec::new();
+          let rcp:Vec<ClientReceiverContainer<BaseProto>> = Vec::new();
 
 
           info!("Initialized server.");
@@ -70,6 +69,8 @@ impl <'s> Server<'s>{
           }
      }
 
+     ///Starts serving at host port initailized while constructing the instance 
+     /// Call this to run server
      pub fn serve(&mut self)->Result<(), ServerError>{
           //constructing address string from port number and host  
           let mut addr = self.host.trim()
@@ -95,30 +96,59 @@ impl <'s> Server<'s>{
 
                if let Err(e) = stream.read(&mut buf){
                     error!("An error occured when type was being extracted from incoming stream {:?}", e);
-                    thread::sleep(Duration::from_secs(1));
+                    sleep(Duration::from_secs(1));     //thread sleep
                     continue;
                }
 
                //readining initial handshake request
-               let client_type:TransmitService = match get_type_for(&mut buf){
+               let client_service:TransmitService = match get_type_for(&mut buf){
                     Ok(t)=>t,
                     Err(e)=>{
                          error!("An error occured when type was being extracted from incoming stream {:?}", e);
-                         thread::sleep(Duration::from_secs(1));
+                         sleep(Duration::from_secs(1));
                          continue;
                     }
                };
 
-               //TODO:
-               match client_type {
-                   TransmitService::Receive=>{},
-                   TransmitService::Send=>{}
-               }
+               //handler creation to handle the incoming stream
+               let handler:StreamHandler<BaseProtocol> =  match default_new(stream, client_service.clone()){
+                    Ok(e)=>e,
+                    Err(e)=>{
+                         error!("Could not initialize stream handler due to... {:?}", e);
+                         continue;
+                    }
+               };
 
-               let handle = spawn(||{
 
-               });
+               //channels creartion to communicate between streams in different thread
+               let(sender, receiver):
+                         (Sender<BaseProto>, Receiver<BaseProto>) = channel();
 
+
+               let key = self.generate_id();      //key generation for container id
+               //moving the handling of each stream to their handlers
+               match client_service {
+                    TransmitService::Receive=>{
+                         let handle = spawn(move ||{
+                              handler.handle_client_receive(receiver);
+                         });
+
+
+                         let container = ClientReceiverContainer::new(handle, sender, key);
+                         self.receive_container_pool.push(container);
+                    },
+                    TransmitService::Send=>{
+                         let handle = spawn(move ||{
+                              handler.handle_client_send(sender);
+                         });
+
+
+                         let container = ClientSenderContainer::new(handle, receiver, key);
+                         self.send_container_pool.push(container);
+                         
+                    }
+               };
+               
                //logging 
                let stream_id = &self.generate_id();
                info!("Incoming: {}", stream_id);
@@ -127,7 +157,7 @@ impl <'s> Server<'s>{
           Ok(())
      }
 
-     fn generate_id(&mut self)->i64{
+     fn generate_id(&mut self)->u64{
           self.stream_counter+=1;
           self.stream_counter
      }

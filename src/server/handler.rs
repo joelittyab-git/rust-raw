@@ -1,8 +1,10 @@
-use std::{io::Read, net::TcpStream, thread::spawn};
+use std::{io::Read, net::TcpStream, sync::mpsc::{Receiver, Sender}, thread::spawn};
 
+
+use log::warn;
 
 use crate::server::protocol::BaseProtocol;
-use super::{error::ServerError, protocol::{Data, DataTransferProtocol}};
+use super::{error::ServerError, protocol::{pto::Proto, Data, DataTransferProtocol, DataTransferProtocolParsed}};
 
 
 /// A struct representing a stream handler
@@ -19,7 +21,8 @@ use super::{error::ServerError, protocol::{Data, DataTransferProtocol}};
 /// ['Send']: TransmitService::Send
 /// ['Receive']: TransmitService::Receive
 /// ['DataTransferProtocol']: crate::server::protocol::DataTransferProtocol
-pub struct StreamHandler<P:DataTransferProtocol>{
+pub struct StreamHandler<P>
+where P:DataTransferProtocol{
      stream:TcpStream,
      transmit:TransmitService,
      protocol: P
@@ -66,62 +69,67 @@ impl <P:DataTransferProtocol> StreamHandler<P>{
           })
      }
 
-
-     /// creates a new handler object to handle a client by using default protocol ['BaseProtocol']
-     /// 
+     /// Handles [TransmitService::Send] type client 
      /// 
      /// # Arguments
-     ///
-     /// * `tcp_stream` - initlialized tcp stream of type ['TcpStream']
-     /// * `service` - A Transmit service for the respective stream [SEND] or [RECEIVE]
-     /// 
-     /// ['BaseProtocol']: BaseProtocol
-     /// ['TcpStream']: std::net::TcpStream
-     /// [SEND]: TransmitService::Send
-     /// [RECEIVE]: TransmitService::Receive
-     /// 
-     /// # Returns 
-     /// * `Result<StreamHandler<BaseProtocol>, ServerError>`
-     /// 
-     pub fn default_new(mut tcp_stream:TcpStream, service:TransmitService)->Result<StreamHandler<BaseProtocol>, ServerError>{
-          //buffer data extraction from stream
-          let mut buf = [0;1024];
-          match tcp_stream.read(&mut buf){
-               Err(e)=>return Err(ServerError::StreamReadError(e)),
-               _=>()
+     /// - `chx`: A [std::sync::mpsc::Sender<T>] object associated with a channel. Since this method handles [TransmitService::Send] type clients it awaits for 
+     ///            incoming data in streams to send to the Receiver type stored in [crate::server] pool
+     ///            Type `<T>` should be a pto object that implements Proto to transfer data between threads
+     pub fn handle_client_send<T,A,B,C>(&self, chx:Sender<T>)
+     where T:Proto<A,B,C,>{
+          warn!("Received and handling send");
+
+          loop {
+              
           }
-     
-          //initializes base protocol using buffer data from the passed stream
-          let proto = match BaseProtocol::new(Data::Utf8(buf)){
-               Ok(t)=>{t},
-               Err(e)=>{
-                    return Err(ServerError::ProtocolError(e));
-               }
-          };
-     
-          Ok(StreamHandler{
-               stream:tcp_stream,
-               transmit:service,
-               protocol:proto
-          })
      }
 
-     pub fn handle(&self){
-          match self.transmit {
-               TransmitService::Send=>self.handle_client_send(),
-               TransmitService::Receive=>self.handle_client_receive()
-          };
-     }
 
-     fn handle_client_send(&self){
-          let handle = spawn(||{
-
-          });
-     }
-
-     fn handle_client_receive(&self){
-          todo!();
+     /// Handles [TransmitService::Receive] type client 
+     /// 
+     /// # Arguments
+     /// - `chx`: A [std::sync::mpsc::Receiver<T>] object associated with a channel. Since this method handles [TransmitService::Receive] type clients it awaits for 
+     ///            incoming data from a [std::sync::mpsc::Sender<T>] obejct associated with some other thread stored in the [crate::server] 
+     ///            pool of [crate::server::container::ClientSenderContainer]
+     pub fn handle_client_receive<T,A,B,C>(&self, chx:Receiver<T>)
+     where T:Proto<A,B,C>{
+          warn!("Received and handling receive");
+          loop {
+              
+          }
      }
 }
 
+/// creates a new handler object to handle a client by using default protocol ['BaseProtocol']
+/// 
+/// 
+/// # Arguments
+///
+/// * `tcp_stream` - initlialized tcp stream of type ['TcpStream']
+/// * `service` - A Transmit service for the respective stream [SEND] or [RECEIVE]
+/// 
+/// ['BaseProtocol']: BaseProtocol
+/// ['TcpStream']: std::net::TcpStream
+/// [SEND]: TransmitService::Send
+/// [RECEIVE]: TransmitService::Receive
+/// 
+/// # Returns 
+/// * `Result<StreamHandler<BaseProtocol>, ServerError>`
+/// 
+pub fn default_new(tcp_stream:TcpStream, service:TransmitService)->Result<StreamHandler<BaseProtocol>, ServerError>{
+     Ok(StreamHandler{
+          stream:tcp_stream,
+          transmit:service,
+          protocol:BaseProtocol::new()
+     })
+}
 
+///Clone implementation for Transmit Service
+impl Clone for TransmitService {
+     fn clone(&self) -> Self {
+          match self {
+               Self::Send => Self::Send,
+               Self::Receive => Self::Receive,
+          }
+     }
+}

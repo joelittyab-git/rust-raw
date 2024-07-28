@@ -18,7 +18,13 @@ use super::handler::TransmitService;
 /// ['Utf8']: Data::Utf8
 /// ['Utf16']: Data::Utf16
 pub struct BaseProtocol{
+     /*Format-----------------------
+     <alias>-<to>(/n)
+     <body>
+      ------------------------------*/
+}
 
+pub struct ParsedData{
      /*Format-----------------------
      <alias>-<to>(/n)
      <body>
@@ -30,11 +36,10 @@ pub struct BaseProtocol{
      body:String
 }
 
-/// A trait for working with streams tranferring specific data containing data body and client identifier (alias)
-///
-/// This trait provides methods for obtaining a unique identifier for
-/// a client and retrieving data in a stream format.
-pub trait DataTransferProtocol{
+/// A trait for working which parsed data
+/// A parsed data type implements the below and should contain the mthods provided 
+/// to uniquely identify the sender and receiver and the content of the data
+pub trait DataTransferProtocolParsed{
      /// Returns a unique identifier for the client.
      /// 
      /// # Returns
@@ -58,10 +63,19 @@ pub trait DataTransferProtocol{
      fn get_body(&self) -> Result<&String, ProtocolError>;    
 }
 
+/// A trait for working with streams tranferring specific data containing data body and client identifier (alias)
+///
+/// This trait requires a parse method to be implemented which results in a type containing data 
+/// which implements [DataTransferProtocolParser]
+pub trait DataTransferProtocol {
+     type Parsed: DataTransferProtocolParsed;
+    fn parse(&self, data:Data)->Result<Self::Parsed, ProtocolError>;
+}
 
 /// An enum representing various encodings of data that can be sent through stream
 /// ['Utf8'] encodes all unicode caharacters
 /// ['Utf16'] encodes one or two 16-bit code units to represent each character.
+/// This is a enum to handle actual raw data in the form of any two encodings
 ///
 /// # Variants
 ///
@@ -75,16 +89,42 @@ pub enum Data {
     Utf16([u16;1024])
 }
 
+/// An enum representing various encodings of data that can be sent through stream
+/// ['Utf8'] encodes all unicode caharacters
+/// ['Utf16'] encodes one or two 16-bit code units to represent each character.
+/// This is an enum represent what type of encoding does a handler handle
+///
+/// # Variants
+///
+/// - [`Utf8`]: Indicates a stream could not bind to its host:port
+/// - [`Utf16`]: Indicates that an incoming stream could not have been accepted
+/// 
+/// ['Utf16']: Data::Utf16
+/// ['Utf8']: Data::Utf8
+pub enum DataType {
+    Utf8,
+    Utf16
+}
+
 impl BaseProtocol{
      /// Creates a new `BaseProtocol` with the given raw data in either of the encodings [`Utf8`] or [`Utf16`]
-     /// # Arguments
-     ///
-     /// * `data` - The raw data in one of the encodings provided
      ///
      /// # Errors
      ///
      /// This method might return a protocol error if invalid format for the protoco is present
-     pub fn new(data:Data)->Result<Self, ProtocolError>{
+     pub fn new()->BaseProtocol{
+          Self{}
+     }
+}
+
+impl DataTransferProtocol for BaseProtocol{
+          
+     type Parsed = ParsedData;
+     /// Parses data and results in a parsed data type
+     /// 
+     /// # Arguments
+     /// - `data` of type [Data] which contains raw bytes of encoding [DataType::Utf8] or [DataType::Utf16]
+     fn parse(&self, data:Data)->Result<ParsedData, ProtocolError>{
           let raw_str = match data{
                Data::Utf16(d)=>{
                     String::from_utf16_lossy(&d).to_string()
@@ -105,27 +145,18 @@ impl BaseProtocol{
                Some(t)=>t
           };
           
-          
-          Ok(Self{
+          Ok(ParsedData{
                raw:data,
+               to:to.to_string(),
                alias:alias.to_string(),
-               body:body.to_string(),
-               to:to.to_string() 
+               body:body.to_string()
           })
      }
 
-
-     ///----getters-----
-     pub fn get_body(&self)->&String{
-          &self.body
-     }
-     pub fn get_alias(&self)->&String{
-          &self.alias
-     }
 }
 
 ///Implementation of DataTransferProtocol trait for BaseProtocol
-impl DataTransferProtocol for BaseProtocol{
+impl DataTransferProtocolParsed for ParsedData{
      /// # Returns:
      /// The body of the transfered data
      fn get_body(&self) -> Result<&String, ProtocolError> {
@@ -143,8 +174,15 @@ impl DataTransferProtocol for BaseProtocol{
      }
 }
 
+/**
+ * I. SEND/RECEIVE
+     - The client initializes a handshake by specifying the client type to the server
 
-
+     /*Format-----------------------
+     <type(GET/RECEIVE)>
+      ------------------------------*/
+ */
+///Method to parse the handshake request, to identify the client as [TransmitService::Send] or [TransmitService::Receive]
 pub fn get_type_for(raw:&[u8])->Result<TransmitService, ProtocolError>{
      //slizcing data for converting to string
      let raw_send = &raw[0..4];
