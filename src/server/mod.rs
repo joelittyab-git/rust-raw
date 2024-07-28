@@ -110,6 +110,8 @@ impl Server{
                     }
                };
 
+               println!("{:?}", client_service);
+
                //handler creation to handle the incoming stream
                let handler:StreamHandler<BaseProtocol> =  match default_new(stream, client_service.clone()){
                     Ok(e)=>e,
@@ -126,32 +128,32 @@ impl Server{
 
 
                let key = self.generate_id();      //key generation for container id
-               //moving the handling of each stream to their handlers
+
+               //moving the handling of each stream to their handlers in separate threads
                match client_service {
                     TransmitService::Receive=>{
                          let handle = spawn(move ||{
                               handler.handle_client_receive(receiver);
                          });
 
-
+                         //container creation for this above handler and channel compoenents
                          let container = ClientReceiverContainer::new(handle, sender, key);
                          self.receive_container_pool.push(container);
                     },
-                    TransmitService::Send=>{
+                    TransmitService::Send(s)=>{
                          let handle = spawn(move ||{
                               handler.handle_client_send(sender);
                          });
 
-
+                         //container creation for this above handler and channel compoenents
                          let container = ClientSenderContainer::new(handle, receiver, key);
                          self.send_container_pool.push(container);
                          
                     }
                };
-               
-               //logging 
-               let stream_id = &self.generate_id();
-               info!("Incoming: {}", stream_id);
+
+               //logging
+               info!("Accepted incoming request from {addr} -- {{ id: {} }}", key);
           }
 
           Ok(())

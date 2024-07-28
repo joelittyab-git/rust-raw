@@ -39,9 +39,9 @@ where P:DataTransferProtocol{
 ///
 /// - `Sender`: Respresents a client that only sends data.
 /// - `Receive`: Represents a client that only receives data.
-
+#[derive(Debug)]
 pub enum TransmitService{
-    Send,
+    Send(String),
     Receive
 }
 
@@ -128,7 +128,7 @@ pub fn default_new(tcp_stream:TcpStream, service:TransmitService)->Result<Stream
 impl Clone for TransmitService {
      fn clone(&self) -> Self {
           match self {
-               Self::Send => Self::Send,
+               Self::Send(s) => Self::Send(s.clone()),
                Self::Receive => Self::Receive,
           }
      }

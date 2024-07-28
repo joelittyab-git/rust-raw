@@ -69,7 +69,7 @@ pub trait DataTransferProtocolParsed{
 /// which implements [DataTransferProtocolParser]
 pub trait DataTransferProtocol {
      type Parsed: DataTransferProtocolParsed;
-    fn parse(&self, data:Data)->Result<Self::Parsed, ProtocolError>;
+     fn parse(&self, data:Data)->Result<Self::Parsed, ProtocolError>;
 }
 
 /// An enum representing various encodings of data that can be sent through stream
@@ -179,21 +179,33 @@ impl DataTransferProtocolParsed for ParsedData{
      - The client initializes a handshake by specifying the client type to the server
 
      /*Format-----------------------
-     <type(GET/RECEIVE)>
+     <type(SEND;<username>/RECEIVE)>
       ------------------------------*/
  */
 ///Method to parse the handshake request, to identify the client as [TransmitService::Send] or [TransmitService::Receive]
 pub fn get_type_for(raw:&[u8])->Result<TransmitService, ProtocolError>{
      //slizcing data for converting to string
-     let raw_send = &raw[0..4];
-     let raw_receive = &raw[0..7];
+
+     // let raw_send = &raw[0..4];
+     // let raw_receive = &raw[0..7];
 
      //parsing raw to string
-     let raw_parsed_send = String::from_utf8_lossy(raw_send).trim().replace("\n", "");
-     let raw_parsed_receive = String::from_utf8_lossy(raw_receive).trim().replace("\n", "");
+     let raw_parsed_send = &String::from_utf8_lossy(raw).trim().replace("\n", "")[0..4];
+     let raw_parsed_receive = &String::from_utf8_lossy(raw).trim().replace("\n", "")[0..7];
 
      if raw_parsed_send=="SEND"{
-          return Ok(TransmitService::Send)
+          let mut raw_vec = raw.to_vec();
+          raw_vec.retain(|&x| x!=0);
+          let raw_string = String::from_utf8_lossy(&raw_vec);
+
+          //unpacking data to extract username from handshake data
+          let mut username = match raw_string.split_once(";"){
+               None=>{return Err(ProtocolError::FromatError("Could not find ';' delemiter while extracting username from handshake data".to_string()))},
+               Some((_,b))=>b.to_string()
+          };
+          username = username.trim().replace("\n", "");
+
+          return Ok(TransmitService::Send(username));
      }else if  raw_parsed_receive=="RECEIVE" {
           return Ok(TransmitService::Receive);
      }
