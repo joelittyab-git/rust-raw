@@ -3,6 +3,7 @@
 /// ['transmit_service']:handler::TransmitService
 
 pub mod protocol;
+pub mod middleware;
 pub mod error;
 pub mod handler;
 pub mod container;         //Thread-stream container
@@ -89,22 +90,10 @@ impl Server{
                     Err(e)=>return Err(ServerError::StreamAcceptError(e))
                };
 
-               let mut buf = [0;1024];  //buffer to read initial handshake
+               let client_service = match self.identify_request_type(&mut stream){
+                    None=>{continue;},
+                    Some(t)=>t
 
-               if let Err(e) = stream.read(&mut buf){
-                    error!("An error occured when type was being extracted from incoming stream {:?}", e);
-                    sleep(Duration::from_secs(1));     //thread sleep
-                    continue;
-               }
-
-               //readining initial handshake request
-               let client_service:TransmitService = match get_type_for(&mut buf){
-                    Ok(t)=>t,
-                    Err(e)=>{
-                         error!("An error occured when type was being extracted from incoming stream {:?}", e);
-                         sleep(Duration::from_secs(1));
-                         continue;
-                    }
                };
 
                println!("{:?}", client_service);
@@ -154,6 +143,30 @@ impl Server{
           }
 
           Ok(())
+     }
+
+     /// method to identify request type from stream data {initial handshake}
+     fn identify_request_type(&self, tcp_stream:&mut TcpStream)->Option<TransmitService>{
+          let mut buf = [0;1024];  //buffer to read initial handshake
+
+          if let Err(e) = tcp_stream.read(&mut buf){
+               error!("An error occured when type was being extracted from incoming stream {:?}", e);
+               sleep(Duration::from_secs(1));     //thread sleep
+               return None;
+          }
+
+          //readining initial handshake request
+          let client_service = match get_type_for(&mut buf){
+               Ok(t)=>Some(t),
+               Err(e)=>{
+                    error!("An error occured when type was being extracted from incoming stream {:?}", e);
+                    None
+               }
+          };
+
+          return client_service;
+
+          
      }
 
      fn generate_id(&mut self)->u64{
