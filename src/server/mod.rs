@@ -72,11 +72,8 @@ impl Server{
      ///Starts serving at host port initailized while constructing the instance 
      /// Call this to run server
      pub fn serve(&mut self)->Result<(), ServerError>{
-          //constructing address string from port number and host  
-          let mut addr = self.host.trim()
-               .to_string();
-          addr.push(':');
-          addr.push_str(self.port.to_string().as_str());
+          //constructs address
+          let addr = self.construct_addr();
           info!("Server is initialized and is starting on \"{addr}\"");
 
           //initializing TcpListener
@@ -92,7 +89,7 @@ impl Server{
                     Err(e)=>return Err(ServerError::StreamAcceptError(e))
                };
 
-               let mut buf = [0;1024];
+               let mut buf = [0;1024];  //buffer to read initial handshake
 
                if let Err(e) = stream.read(&mut buf){
                     error!("An error occured when type was being extracted from incoming stream {:?}", e);
@@ -162,6 +159,16 @@ impl Server{
      fn generate_id(&mut self)->u64{
           self.stream_counter+=1;
           self.stream_counter
+     }
+
+     /// Method that costructs address from port number and address
+     fn construct_addr(&self)->String{
+          let mut addr = self.host.trim()
+               .to_string();
+          addr.push(':');
+          addr.push_str(self.port.to_string().as_str());
+
+          addr
      }
 }
 
