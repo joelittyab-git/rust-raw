@@ -2,5 +2,5 @@ use std::{io::Write, net::TcpStream};
 
 pub fn def_client(){
      let mut  c = TcpStream::connect("localhost:5000").expect("Something went wrong while client tried to connect to server");
-     c.write("RECEIVE;tatabyebye".as_bytes()).expect("sOMETHING WENT WRONG");
+     c.write("SEND;scale".as_bytes()).expect("sOMETHING WENT WRONG");
 }

@@ -4,6 +4,7 @@
 
 pub mod protocol;
 pub mod middleware;
+pub mod auth;
 pub mod error;
 pub mod handler;
 pub mod container;         //Thread-stream container
@@ -119,7 +120,7 @@ impl Server{
                          let handle = spawn(move ||{
                               handler.handle_client_receive(receiver);
                          });
-
+                         info!("Accepted incoming request from {addr} -- {{ id: {}; receive_alias: {} }}", key, s);          //logging
                          //container creation for this above handler and channel compoenents
                          let container = ClientReceiverContainer::new(handle, sender, key,s);
                          self.receive_container_pool.push(container);
@@ -128,7 +129,7 @@ impl Server{
                          let handle = spawn(move ||{
                               handler.handle_client_send(sender);
                          });
-
+                         info!("Accepted incoming request from {addr} -- {{ id: {}; to_alias: {} }}", key, to);              //logging
                          //container creation for this above handler and channel compoenents
                          let container = ClientSenderContainer::new(handle, receiver, key, to);
                          self.send_container_pool.push(container);
@@ -136,8 +137,6 @@ impl Server{
                     }
                };
 
-               //logging
-               info!("Accepted incoming request from {addr} -- {{ id: {} }}", key);
           }
 
           Ok(())
