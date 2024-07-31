@@ -40,7 +40,8 @@ use std::thread:: JoinHandle;
 pub struct  ClientSenderContainer<T>{
      id:u64,
      thread_handle:JoinHandle<()>,   //thread handle for the incoming request listener 
-     channel_rx:Option<Receiver<T>>
+     channel_rx:Option<Receiver<T>>,
+     to_alias:String
 }
 
 /// A struct representing a thread-stream container
@@ -71,7 +72,8 @@ pub struct  ClientSenderContainer<T>{
 pub struct ClientReceiverContainer<T>{
      id:u64,
      thread_handle:JoinHandle<()>,
-     channel_tx:Option<Sender<T>>
+     channel_tx:Option<Sender<T>>,
+     alias:String
 }
 
 impl <'s,T>ClientReceiverContainer<T> {
@@ -82,11 +84,12 @@ impl <'s,T>ClientReceiverContainer<T> {
      /// * `handle`: JoinHandle<()> of the thread running a handler
      /// * `channel_sender`: Sender<T> of the channel associated with the Receiver<T> in the executing in the thread
      /// * `key`: Unique key for this container instance
-     pub fn new(handle:JoinHandle<()>, channel_sender:Sender<T>, key:u64)->Self{
+     pub fn new(handle:JoinHandle<()>, channel_sender:Sender<T>, key:u64, alias:String)->Self{
           ClientReceiverContainer{
                id:key,
                thread_handle:handle,
-               channel_tx:Some(channel_sender)
+               channel_tx:Some(channel_sender),
+               alias
           }
      }
 
@@ -111,6 +114,10 @@ impl <'s,T>ClientReceiverContainer<T> {
      pub fn get_thread_handle(&self)->&JoinHandle<()>{
           &self.thread_handle
      }
+
+     pub fn get_alias(&self)->&String{
+          &self.alias
+     }
 }
 
 
@@ -123,11 +130,12 @@ impl <T>ClientSenderContainer<T> {
      /// * `handle`: JoinHandle<()> of the thread running a handler
      /// * `channel_sender`: Sender<T> of the channel associated with the Receiver<T> in the executing in the thread
      /// * `key`: Unique key for this container instance
-     pub fn new(handle:JoinHandle<()>, channel_receiver:Receiver<T>, key:u64)->Self{
+     pub fn new(handle:JoinHandle<()>, channel_receiver:Receiver<T>, key:u64, to_alias:String)->Self{
           ClientSenderContainer{
                id:key,
                thread_handle:handle,
-               channel_rx:Some(channel_receiver)
+               channel_rx:Some(channel_receiver),
+               to_alias
           }
      }
 
@@ -150,6 +158,10 @@ impl <T>ClientSenderContainer<T> {
 
      pub fn get_thread_handle(&self)->&JoinHandle<()>{
           &self.thread_handle
+     }
+
+     pub fn get_alias(&self)->&String{
+          &self.to_alias
      }
 }
 

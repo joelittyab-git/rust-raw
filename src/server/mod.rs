@@ -17,7 +17,7 @@ use log::{error, info, warn};
 use error::ServerError;
 use container::{ClientReceiverContainer, ClientSenderContainer};
 use handler::{StreamHandler, TransmitService, default_new};
-use protocol::{BaseProtocol, get_type_for, pto::BaseProto};
+use protocol::{BaseProtocol, get_type_for_raw_utf8, pto::BaseProto};
 
 
 /// A struct representing a [Server] instance that binds on an endpoint anc
@@ -121,7 +121,7 @@ impl Server{
                          });
 
                          //container creation for this above handler and channel compoenents
-                         let container = ClientReceiverContainer::new(handle, sender, key);
+                         let container = ClientReceiverContainer::new(handle, sender, key,s);
                          self.receive_container_pool.push(container);
                     },
                     TransmitService::Send(to)=>{
@@ -130,7 +130,7 @@ impl Server{
                          });
 
                          //container creation for this above handler and channel compoenents
-                         let container = ClientSenderContainer::new(handle, receiver, key);
+                         let container = ClientSenderContainer::new(handle, receiver, key, to);
                          self.send_container_pool.push(container);
                          
                     }
@@ -154,7 +154,7 @@ impl Server{
           }
 
           //readining initial handshake request
-          let client_service = match get_type_for(&mut buf){
+          let client_service = match get_type_for_raw_utf8(&mut buf){
                Ok(t)=>Some(t),
                Err(e)=>{
                     error!("An error occured when type was being extracted from incoming stream {:?}", e);

@@ -183,7 +183,7 @@ impl DataTransferProtocolParsed for ParsedData{
       ------------------------------*/
  */
 ///Method to parse the handshake request, to identify the client as [TransmitService::Send] or [TransmitService::Receive]
-pub fn get_type_for(raw:&[u8])->Result<TransmitService, ProtocolError>{
+pub fn get_type_for_raw_utf8(raw:&[u8])->Result<TransmitService, ProtocolError>{
      //slizcing data for converting to string
 
      // let raw_send = &raw[0..4];
@@ -194,8 +194,11 @@ pub fn get_type_for(raw:&[u8])->Result<TransmitService, ProtocolError>{
      let raw_parsed_receive = &String::from_utf8_lossy(raw).trim().replace("\n", "")[0..7];
 
      if raw_parsed_send=="SEND"{
+          //converting array to vec
           let mut raw_vec = raw.to_vec();
+          //retaining all non zero values
           raw_vec.retain(|&x| x!=0);
+          //converting bytes vec to string
           let raw_string = String::from_utf8_lossy(&raw_vec);
 
           //unpacking data to extract username from handshake data
@@ -203,7 +206,7 @@ pub fn get_type_for(raw:&[u8])->Result<TransmitService, ProtocolError>{
                None=>{return Err(ProtocolError::FromatError("Could not find ';' delemiter while extracting username from handshake data".to_string()))},
                Some((_,b))=>b.to_string()
           };
-          username = username.trim().replace("\n", "");
+          username = username.trim().replace("\n", "");          //clearing any escape seq
 
           return Ok(TransmitService::Send(username));
      }else if  raw_parsed_receive=="RECEIVE" {
@@ -219,7 +222,7 @@ pub fn get_type_for(raw:&[u8])->Result<TransmitService, ProtocolError>{
                None=>{return Err(ProtocolError::FromatError("Could not find ';' delemiter while extracting username from handshake data".to_string()))},
                Some((_,b))=>b.to_string()
           };
-          to_username = to_username.trim().replace("\n", "");
+          to_username = to_username.trim().replace("\n", "");    //clearing any escape seq
 
           return Ok(TransmitService::Receive(to_username));
      }
