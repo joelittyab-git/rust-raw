@@ -44,7 +44,7 @@ I. SEND/RECEIVE
      - The client initializes a handshake by specifying the client type to the server
 
      /*Format-----------------------
-     <type(GET/RECEIVE)>
+     <type(SEND;<to-username>/RECEIVE;<self-usrname>)>
       ------------------------------*/
 
 

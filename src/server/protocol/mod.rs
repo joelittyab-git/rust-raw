@@ -179,7 +179,7 @@ impl DataTransferProtocolParsed for ParsedData{
      - The client initializes a handshake by specifying the client type to the server
 
      /*Format-----------------------
-     <type(SEND;<username>/RECEIVE)>
+     <type(SEND;<to-username>/RECEIVE<self-usrname>)>
       ------------------------------*/
  */
 ///Method to parse the handshake request, to identify the client as [TransmitService::Send] or [TransmitService::Receive]
