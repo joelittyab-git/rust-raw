@@ -207,7 +207,21 @@ pub fn get_type_for(raw:&[u8])->Result<TransmitService, ProtocolError>{
 
           return Ok(TransmitService::Send(username));
      }else if  raw_parsed_receive=="RECEIVE" {
-          return Ok(TransmitService::Receive);
+          //converting array to vector
+          let mut raw_vec = raw.to_vec();
+          //retain all non null values
+          raw_vec.retain(|&x| x!=0);
+          //converting to string
+          let raw_string = String::from_utf8_lossy(&raw_vec);
+
+          //unpacking data to extract username from handshake data
+          let mut to_username = match raw_string.split_once(";"){
+               None=>{return Err(ProtocolError::FromatError("Could not find ';' delemiter while extracting username from handshake data".to_string()))},
+               Some((_,b))=>b.to_string()
+          };
+          to_username = to_username.trim().replace("\n", "");
+
+          return Ok(TransmitService::Receive(to_username));
      }
 
      Err(ProtocolError::SessionExtractionError("Could not determine wether the session was send or receive.".to_string()))

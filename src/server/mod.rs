@@ -12,7 +12,7 @@ use std::{io::Read, net::{
      TcpListener,
      TcpStream
 }, process::exit, sync::mpsc::{channel, Receiver, Sender}, thread:: {spawn, sleep}, time::Duration};
-use log::{info,error};
+use log::{error, info, warn};
 
 use error::ServerError;
 use container::{ClientReceiverContainer, ClientSenderContainer};
@@ -96,8 +96,6 @@ impl Server{
 
                };
 
-               println!("{:?}", client_service);
-
                //handler creation to handle the incoming stream
                let handler:StreamHandler<BaseProtocol> =  match default_new(stream, client_service.clone()){
                     Ok(e)=>e,
@@ -117,7 +115,7 @@ impl Server{
 
                //moving the handling of each stream to their handlers in separate threads
                match client_service {
-                    TransmitService::Receive=>{
+                    TransmitService::Receive(s)=>{
                          let handle = spawn(move ||{
                               handler.handle_client_receive(receiver);
                          });
@@ -126,7 +124,7 @@ impl Server{
                          let container = ClientReceiverContainer::new(handle, sender, key);
                          self.receive_container_pool.push(container);
                     },
-                    TransmitService::Send(s)=>{
+                    TransmitService::Send(to)=>{
                          let handle = spawn(move ||{
                               handler.handle_client_send(sender);
                          });

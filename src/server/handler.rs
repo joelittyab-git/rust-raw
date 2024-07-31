@@ -42,7 +42,7 @@ where P:DataTransferProtocol{
 #[derive(Debug)]
 pub enum TransmitService{
     Send(String),
-    Receive
+    Receive(String)
 }
 
 impl <P:DataTransferProtocol> StreamHandler<P>{
@@ -129,7 +129,7 @@ impl Clone for TransmitService {
      fn clone(&self) -> Self {
           match self {
                Self::Send(s) => Self::Send(s.clone()),
-               Self::Receive => Self::Receive,
+               Self::Receive(s) => Self::Receive(s.clone()),
           }
      }
 }
