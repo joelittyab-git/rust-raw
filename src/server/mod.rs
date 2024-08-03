@@ -12,7 +12,13 @@ pub mod container;         //Thread-stream container
 use std::{io::Read, net::{
      TcpListener,
      TcpStream
-}, process::exit, sync::mpsc::{channel, Receiver, Sender}, thread:: {spawn, sleep}, time::Duration};
+}, sync::{mpsc::{
+     channel,
+     Receiver,
+     Sender
+}, Arc, Mutex, MutexGuard},thread:: {sleep, spawn},
+ time::Duration
+};
 use log::{error, info, warn};
 
 use error::ServerError;
@@ -30,17 +36,17 @@ use protocol::{BaseProtocol, get_type_for_raw_utf8, pto::BaseProto};
 /// - `host`: The host on which the server is hosted
 /// - `port`: The port on which the server is posted
 /// - `stream``: The pool record of incoming streams
-/// - `send_container_pool`: Or scp, a pool of [ClientSenderContainer], contains the pool of active running send client thread handles and their channels
-/// - `receive_container_pool`: Or rcp, a pool of [ClientReceiverContainer], contains the pool of active running receive client thread handles and their channels
+/// - `send_container_pool`: Or scp, a pool of [ClientSenderContainer], contains the pool of active running send client thread handles and their channels. Arc mutex to handle multi-threaded stream handling.
+/// - `receive_container_pool`: Or rcp, a pool of [ClientReceiverContainer], contains the pool of active running receive client thread handles and their channels. Arc mutex to handle multi-threaded stream handling.
 #[derive(Debug)]
 pub struct Server{
      host:String,
      port:i32,
      stream:Vec<TcpStream>,
-     send_container_pool:Vec<ClientSenderContainer<BaseProto>>,
-     receive_container_pool:Vec<ClientReceiverContainer<BaseProto>>,
-     stream_counter:u64       //maintains the id for each incoming stream
-
+     send_container_pool:Arc<Mutex<Vec<ClientSenderContainer<BaseProto>>>>,
+     receive_container_pool:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>>,
+     stream_counter:u64,       //maintains the id for each incoming stream
+     // middleware_pool:Vec<Box<dyn middleware::Middleware>>
 }
 
 
@@ -58,6 +64,9 @@ impl Server{
           let scp:Vec<ClientSenderContainer<BaseProto>> = Vec::new();
           let rcp:Vec<ClientReceiverContainer<BaseProto>> = Vec::new();
 
+          //initialiing shared mutable datasource for multithreaded stream handlers
+          let rcp_shared:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>> = Arc::new(Mutex::new(rcp));
+          let scp_shared:Arc<Mutex<Vec<ClientSenderContainer<BaseProto>>>> = Arc::new(Mutex::new(scp));
 
           info!("Initialized server.");
           let stream:Vec<TcpStream> = Vec::new();
@@ -65,8 +74,8 @@ impl Server{
                host,
                port,
                stream,
-               send_container_pool:scp,
-               receive_container_pool:rcp,
+               send_container_pool:scp_shared,
+               receive_container_pool:rcp_shared,
                stream_counter:0
           }
      }
@@ -98,7 +107,7 @@ impl Server{
                };
 
                //handler creation to handle the incoming stream
-               let handler:StreamHandler<BaseProtocol> =  match default_new(stream, client_service.clone()){
+               let mut handler:StreamHandler<BaseProtocol> =  match default_new(stream, client_service.clone()){
                     Ok(e)=>e,
                     Err(e)=>{
                          error!("Could not initialize stream handler due to... {:?}", e);
@@ -121,18 +130,28 @@ impl Server{
                               handler.handle_client_receive(receiver);
                          });
                          info!("Accepted incoming request from {addr} -- {{ id: {}; receive_alias: {} }}", key, s);          //logging
-                         //container creation for this above handler and channel compoenents
+                         // container creation for this above handler and channel compoenents
                          let container = ClientReceiverContainer::new(handle, sender, key,s);
-                         self.receive_container_pool.push(container);
+                         // cloning arc
+                         let cloned_shared_rcp = self.receive_container_pool.clone();
+                         // locking mutex
+                         let mut rcp = cloned_shared_rcp.lock().unwrap();
+                         rcp.push(container);
+
                     },
                     TransmitService::Send(to)=>{
+                         let cloned_scp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>> = self.receive_container_pool.clone();
                          let handle = spawn(move ||{
-                              handler.handle_client_send(sender);
+                              handler.handle_client_send(sender, cloned_scp);
                          });
                          info!("Accepted incoming request from {addr} -- {{ id: {}; to_alias: {} }}", key, to);              //logging
                          //container creation for this above handler and channel compoenents
-                         let container = ClientSenderContainer::new(handle, receiver, key, to);
-                         self.send_container_pool.push(container);
+                         let container:ClientSenderContainer<BaseProto> = ClientSenderContainer::new(handle, receiver, key, to);
+                         //cloning scp arc
+                         let cloned_shared_scp:Arc<Mutex<Vec<ClientSenderContainer<BaseProto>>>> = self.send_container_pool.clone();
+                         //locking scp mutex
+                         let mut scp:MutexGuard<Vec<ClientSenderContainer<BaseProto>>> = cloned_shared_scp.lock().unwrap();
+                         scp.push(container);
                          
                     }
                };
@@ -180,5 +199,6 @@ impl Server{
 
           addr
      }
+
 }
 
