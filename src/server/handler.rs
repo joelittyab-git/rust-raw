@@ -1,11 +1,10 @@
 use std::{io::Read, net::TcpStream, sync::mpsc::{Receiver, Sender}, thread::spawn};
 
 
-use log::warn;
+use log::{error, warn};
 
 use crate::server::protocol::BaseProtocol;
-use super::{error::ServerError, protocol::{pto::Proto, Data, DataTransferProtocol, DataTransferProtocolParsed}};
-
+use super::{error::ServerError, protocol::{pto::{Proto, BaseProto}, Data, DataTransferProtocol, DataTransferProtocolParsed}};
 
 /// A struct representing a stream handler
 /// Handles a stream exclusiive to one transmit type:['Send'] or ['Receive']
@@ -22,10 +21,10 @@ use super::{error::ServerError, protocol::{pto::Proto, Data, DataTransferProtoco
 /// ['Receive']: TransmitService::Receive
 /// ['DataTransferProtocol']: crate::server::protocol::DataTransferProtocol
 pub struct StreamHandler<P>
-where P:DataTransferProtocol{
+where P:DataTransferProtocol<String,String,String>{
      stream:TcpStream,
      transmit:TransmitService,
-     protocol: P
+     protocol: P,
 }
 
 
@@ -45,7 +44,7 @@ pub enum TransmitService{
     Receive(String)
 }
 
-impl <P:DataTransferProtocol> StreamHandler<P>{
+impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
      /// creates a new handler object to handle a client
      /// 
      /// 
@@ -75,12 +74,30 @@ impl <P:DataTransferProtocol> StreamHandler<P>{
      /// - `chx`: A [std::sync::mpsc::Sender<T>] object associated with a channel. Since this method handles [TransmitService::Send] type clients it awaits for 
      ///            incoming data in streams to send to the Receiver type stored in [crate::server] pool
      ///            Type `<T>` should be a pto object that implements Proto to transfer data between threads
-     pub fn handle_client_send<T,A,B,C>(&self, chx:Sender<T>)
+     pub fn handle_client_send<T,A,B,C>(&mut self, chx:Sender<T>)
      where T:Proto<A,B,C,>{
           warn!("Received and handling send");
 
           loop {
-              
+               //buffer to read input data
+               let mut buf:[u8;1024] = [0;1024];
+
+               //handles if the reading of stream returns an error
+               if let Err(e) = self.stream.read(&mut buf){
+                    error!("An error occured while reading stream {{{}}}", e);
+                    continue;
+               };
+
+               let parsed = match self.protocol.parse(Data::Utf8(buf)){
+                    Err(e)=>{
+                         error!("An error occured while parsing protocol {{{:?}}}", e);
+                         continue;
+                    },
+                    Ok(s)=>s
+               };
+
+               //todo()
+
           }
      }
 
@@ -91,11 +108,18 @@ impl <P:DataTransferProtocol> StreamHandler<P>{
      /// - `chx`: A [std::sync::mpsc::Receiver<T>] object associated with a channel. Since this method handles [TransmitService::Receive] type clients it awaits for 
      ///            incoming data from a [std::sync::mpsc::Sender<T>] obejct associated with some other thread stored in the [crate::server] 
      ///            pool of [crate::server::container::ClientSenderContainer]
-     pub fn handle_client_receive<T,A,B,C>(&self, chx:Receiver<T>)
-     where T:Proto<A,B,C>{
+     pub fn handle_client_receive(&self, chx:Receiver<BaseProto>)->Result<(), ServerError>{
           warn!("Received and handling receive");
           loop {
-              
+               let pto = match chx.recv(){
+                    Err(e)=>{
+                         return Result::Err(ServerError::ChannelReceiveError(e));
+                    },
+                    Ok(t)=>t
+               };
+
+               let raw = self.protocol.to_raw(pto);
+               //todp
           }
      }
 }
