@@ -1,4 +1,4 @@
-use std::io::Error;
+use std::{io::Error, sync::mpsc::RecvError};
 use crate::server::protocol::error::ProtocolError;
 /// An enum representing various types of errors that can occur in the application.
 ///
@@ -13,5 +13,7 @@ pub enum ServerError {
      AddressBindError(Error),
      StreamAcceptError(Error),
      StreamReadError(Error),
-     ProtocolError(ProtocolError)
+     ProtocolError(ProtocolError),
+     ChannelReceiveError(RecvError),
+     ChannelSendError(RecvError)
 }
