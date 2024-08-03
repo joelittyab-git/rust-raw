@@ -67,9 +67,22 @@ pub trait DataTransferProtocolParsed{
 ///
 /// This trait requires a parse method to be implemented which results in a type containing data 
 /// which implements [DataTransferProtocolParser]
-pub trait DataTransferProtocol {
+pub trait DataTransferProtocol<I,S,B> {
      type Parsed: DataTransferProtocolParsed;
+     /// A method to parse raw data to the protocol that implements this trait 
+     /// 
+     /// # Returns
+     /// 
+     /// Returns a 'Result<Parsed, ProtocoError>' which is a struct that contains the parsed data
+     /// 
      fn parse(&self, data:Data)->Result<Self::Parsed, ProtocolError>;
+
+     /// A method to convert parsed data to raw bytes
+     /// 
+     /// # Returns
+     /// 
+     /// Returns a 'Result<Vec<u8>, ProtocoError>' which is a vector that contains the raw data in bytes
+     fn to_raw<T:Proto<I,S,B>>(&self, pto:T)->Result<Vec<u8>, ProtocolError>;
 }
 
 /// An enum representing various encodings of data that can be sent through stream
@@ -117,7 +130,7 @@ impl BaseProtocol{
      }
 }
 
-impl DataTransferProtocol for BaseProtocol{
+impl DataTransferProtocol<String,String,String> for BaseProtocol{
           
      type Parsed = ParsedData;
      /// Parses data and results in a parsed data type
@@ -127,9 +140,15 @@ impl DataTransferProtocol for BaseProtocol{
      fn parse(&self, data:Data)->Result<ParsedData, ProtocolError>{
           let raw_str = match data{
                Data::Utf16(d)=>{
-                    String::from_utf16_lossy(&d).to_string()
+                    //trimming all null (unwritten values of the array) from the array 
+                    let mut v = d.to_vec();
+                    v.retain(|s|*s!=0);
+                    String::from_utf16_lossy(&v).to_string()
                },
                Data::Utf8(d)=>{
+                    //trimming all null (unwritten values of the array) from the array 
+                    let mut v = d.to_vec();
+                    v.retain(|s|*s!=0);
                     String::from_utf8_lossy(&d).to_string()
                }
           };
@@ -152,7 +171,15 @@ impl DataTransferProtocol for BaseProtocol{
                body:body.to_string()
           })
      }
-
+     
+     fn to_raw<T:Proto<String,String,String>>(&self, pto:T)->Result<Vec<u8>, ProtocolError> {
+          //formatting to protocol standard
+          let raw_str = format!("{}-{}\n{}", pto.get_sender(), pto.get_receiver(), pto.get_body());
+          //converting string to vector bytes
+          let vec_raw = raw_str.as_bytes().to_vec();
+          warn!("Returnn protocol{:?}",raw_str);
+          Ok(vec_raw)
+     }
 }
 
 ///Implementation of DataTransferProtocol trait for BaseProtocol
