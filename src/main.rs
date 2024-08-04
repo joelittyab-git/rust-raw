@@ -2,7 +2,6 @@ use std::io::stdin;
 use std::u64::MAX;
 
 use server::protocol::{self, Data, DataTransferProtocol};
-use server::container::generate_key;
 use server::Server;
 mod server;
 mod client;

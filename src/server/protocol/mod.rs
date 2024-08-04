@@ -171,7 +171,14 @@ impl DataTransferProtocol<String,String,String> for BaseProtocol{
                body:body.to_string()
           })
      }
-     
+
+     /// Converts data from protocol standards to ray bytes
+     /// 
+     /// # Arguments
+     /// - `pto` of type [Proto] which contains data
+     /// 
+     /// # Returns 
+     /// - `Result<Vec<u8>, ProtocolError>` a result which contains the vector of u8 bytes
      fn to_raw<T:Proto<String,String,String>>(&self, pto:T)->Result<Vec<u8>, ProtocolError> {
           //formatting to protocol standard
           let raw_str = format!("{}-{}\n{}", pto.get_sender(), pto.get_receiver(), pto.get_body());

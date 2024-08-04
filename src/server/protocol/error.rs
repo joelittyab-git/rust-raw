@@ -5,11 +5,9 @@
 /// # Variants
 ///
 /// - `DataExtractionError`: Indicates that the body of a protocol could not be extracted
-/// = 'FromatError': Indicates that the data parsed has not implemented the data protocol properly, ie.. data not formated properly
-
+/// - `FromatError`: Indicates that the data parsed has not implemented the data protocol properly, ie.. data not formated properly
 #[derive(Debug)]
 pub enum ProtocolError {
     SessionExtractionError(String),
-    BodyExtractionError(String),
     FromatError(String),
 }

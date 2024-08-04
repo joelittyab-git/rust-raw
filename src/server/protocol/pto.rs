@@ -41,6 +41,7 @@ pub trait Proto<I,S,B> {
 ///
 ///  - `alias`: The unique identifier of the client (as a part of data in raw_bytes)
 ///  - `body`: The body of the data transmitted
+///  - `to`: The unique identifier of the client to which the user wishes to send data
 #[derive(Debug)]
 pub struct BaseProto{
      alias:String,
