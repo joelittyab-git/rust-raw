@@ -35,7 +35,8 @@ use std::thread:: JoinHandle;
 ///
 /// - `id`: A unique identifier of a specific container
 /// - `thread_handle`: The thread to handle incoming data from stream
-/// - `channel_rx``: The receiver object of the channel(sender object) initialized in thread created
+/// - `channel_rx`: The receiver object of the channel(sender object) initialized in thread created
+/// - `to_alias`: The uniuqe identifier of the client to which the stream this container handles
 #[derive(Debug)]
 pub struct  ClientSenderContainer<T>{
      id:u64,
@@ -67,7 +68,8 @@ pub struct  ClientSenderContainer<T>{
 ///
 /// - `id`: A unique identifier of a specific container
 /// - `thread_handle`: The thread to handle incoming data from stream
-/// - `channel_tx``: the Sender object of the channel(Receiver) initialized and sent to the thread
+/// - `channel_tx`: The Sender object of the channel(Receiver) initialized and sent to the thread
+/// - `alias`: The unique identifier of the client stream registered in this container
 #[derive(Debug)]
 pub struct ClientReceiverContainer<T>{
      id:u64,
@@ -84,6 +86,7 @@ impl <'s,T>ClientReceiverContainer<T> {
      /// * `handle`: JoinHandle<()> of the thread running a handler
      /// * `channel_sender`: Sender<T> of the channel associated with the Receiver<T> in the executing in the thread
      /// * `key`: Unique key for this container instance
+     /// * `alias`: The unique identifier of the client
      pub fn new(handle:JoinHandle<()>, channel_sender:Sender<T>, key:u64, alias:String)->Self{
           ClientReceiverContainer{
                id:key,
@@ -130,6 +133,7 @@ impl <T>ClientSenderContainer<T> {
      /// * `handle`: JoinHandle<()> of the thread running a handler
      /// * `channel_sender`: Sender<T> of the channel associated with the Receiver<T> in the executing in the thread
      /// * `key`: Unique key for this container instance
+     /// * `to_alias`: The unique identifier of the client to which the stream registered in this container sends to
      pub fn new(handle:JoinHandle<()>, channel_receiver:Receiver<T>, key:u64, to_alias:String)->Self{
           ClientSenderContainer{
                id:key,
@@ -163,18 +167,4 @@ impl <T>ClientSenderContainer<T> {
      pub fn get_alias(&self)->&String{
           &self.to_alias
      }
-}
-
-
-
-pub fn generate_key(username:&mut String)->u64{
-     let bytes = username.trim()[0..8].as_bytes();
-     let mut key:u64 = 0;
-
-     for (size,byte) in bytes.iter().enumerate(){
-          key= key*100 + byte.to_ascii_lowercase() as u64;
-     }
-     
-
-     key
 }
