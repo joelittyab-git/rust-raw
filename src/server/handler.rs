@@ -1,10 +1,10 @@
-use std::{io::Read, net::TcpStream, sync::mpsc::{Receiver, Sender}, thread::spawn};
+use std::{io::Read, net::TcpStream, rc, sync::{mpsc::{Receiver, Sender}, Arc, Mutex, MutexGuard}};
 
 
 use log::{error, warn};
 
 use crate::server::protocol::BaseProtocol;
-use super::{error::ServerError, protocol::{pto::{Proto, BaseProto}, Data, DataTransferProtocol, DataTransferProtocolParsed}};
+use super::{container::ClientReceiverContainer, error::ServerError, protocol::{pto::{BaseProto, Proto}, Data, DataTransferProtocol, DataTransferProtocolParsed}};
 
 /// A struct representing a stream handler
 /// Handles a stream exclusiive to one transmit type:['Send'] or ['Receive']
@@ -74,7 +74,7 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
      /// - `chx`: A [std::sync::mpsc::Sender<T>] object associated with a channel. Since this method handles [TransmitService::Send] type clients it awaits for 
      ///            incoming data in streams to send to the Receiver type stored in [crate::server] pool
      ///            Type `<T>` should be a pto object that implements Proto to transfer data between threads
-     pub fn handle_client_send<T,A,B,C>(&mut self, chx:Sender<T>)
+     pub fn handle_client_send<T,A,B,C>(&mut self, chx:Sender<T>, rcp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>>)
      where T:Proto<A,B,C,>{
           warn!("Received and handling send");
 
@@ -88,6 +88,7 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                     continue;
                };
 
+               //parses read data
                let parsed = match self.protocol.parse(Data::Utf8(buf)){
                     Err(e)=>{
                          error!("An error occured while parsing protocol {{{:?}}}", e);
@@ -96,7 +97,13 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                     Ok(s)=>s
                };
 
-               //todo()
+               //extracts data from parsed
+               let username = parsed.get_to();
+
+               //rcp search for parsed username
+               //arc clone and locking to read data
+               let cloned_rcp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>> = rcp.clone();
+               let rcp:MutexGuard<Vec<ClientReceiverContainer<BaseProto>>> = cloned_rcp.lock().unwrap();
 
           }
      }
