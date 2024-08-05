@@ -6,7 +6,9 @@ use crate::server::protocol::error::ProtocolError;
 ///
 /// - `AddressBindError`: Indicates a stream could not bind to its host:port
 /// - `StreamAcceptError`: Indicates that an incoming stream could not have been accepted
-/// - `StreamReadError` : Indicates that data could not be read from data stream 
+/// - `StreamReadError`: Indicates that data could not be read from data stream 
+/// - `ProtocolError`: Error associated with protocol create, read and update operations
+/// - `ThreadError`: Error associated with multithreaded operations
 
 #[derive(Debug)]
 pub enum ServerError {
@@ -14,6 +16,18 @@ pub enum ServerError {
      StreamAcceptError(Error),
      StreamReadError(Error),
      ProtocolError(ProtocolError),
+     ThreadError(ThreadError)
+}
+
+///
+/// # Variants
+/// 
+/// - `ChannelReceiveError`: Error associated with  [std::sync::mpsc::Receiver] channel transaction
+/// - `ChannelSenderError`: Error associated with [std::sync::mpsc::Sender] channel transactions
+/// 
+
+#[derive(Debug)]
+pub enum ThreadError {
      ChannelReceiveError(RecvError),
-     ChannelSendError(RecvError)
+     ChannelSendError(RecvError),
 }
