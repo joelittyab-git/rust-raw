@@ -1,5 +1,6 @@
 pub mod error;
 pub mod pto;
+pub mod res;
 
 use error::ProtocolError;
 use log::warn;
