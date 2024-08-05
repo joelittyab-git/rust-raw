@@ -52,6 +52,17 @@ II. Data transfer
      <alias>-<to>(/n)
      <body>
       ------------------------------*/
+
+III. Responses
+      - After the client sends to_alias the server sends a response 
+      - Types:
+            1. Success
+            2. InvalidIdentifier
+            3. ServerError
+
+      /*Format-----------
+      <Status>;<Message>
+      ------------------*/
 ---------------------------------------------------------------------------------------------------------------------------
 
 
