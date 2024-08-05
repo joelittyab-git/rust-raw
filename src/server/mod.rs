@@ -42,7 +42,6 @@ use protocol::{BaseProtocol, get_type_for_raw_utf8, pto::BaseProto};
 pub struct Server{
      host:String,
      port:i32,
-     stream:Vec<TcpStream>,
      send_container_pool:Arc<Mutex<Vec<ClientSenderContainer<BaseProto>>>>,
      receive_container_pool:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>>,
      stream_counter:u64,       //maintains the id for each incoming stream
@@ -69,11 +68,9 @@ impl Server{
           let scp_shared:Arc<Mutex<Vec<ClientSenderContainer<BaseProto>>>> = Arc::new(Mutex::new(scp));
 
           info!("Initialized server.");
-          let stream:Vec<TcpStream> = Vec::new();
           Server{
                host,
                port,
-               stream,
                send_container_pool:scp_shared,
                receive_container_pool:rcp_shared,
                stream_counter:0
@@ -127,7 +124,7 @@ impl Server{
                match client_service {
                     TransmitService::Receive(s)=>{
                          let handle = spawn(move ||{
-                              handler.handle_client_receive(receiver);
+                              let _ =handler.handle_client_receive(receiver);
                          });
                          info!("Accepted incoming request from {addr} -- {{ id: {}; receive_alias: {} }}", key, s);          //logging
                          // container creation for this above handler and channel compoenents
