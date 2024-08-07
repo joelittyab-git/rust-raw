@@ -1,10 +1,19 @@
-enum Status {
+
+/// An enum representing all the status codes that can be sent to the client
+///
+/// # Variants
+///
+/// - `Success`: Respresent a success message dispatch 
+/// - `InvalidIdentifier`: Represents an invalid client identifier (username)
+/// - `ServerError`: Server Error
+pub enum Status {
     Success,
     InvalidIdentifier,
     ServerError
 }
 
-struct Response;
+/// Struct for generating responses after client handles the message and sends the status code along with message
+pub struct Response;
 /*<Status>;<Message>*/
 
 impl Response{
