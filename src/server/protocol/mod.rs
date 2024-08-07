@@ -185,7 +185,6 @@ impl DataTransferProtocol<String,String,String> for BaseProtocol{
           let raw_str = format!("{}-{}\n{}", pto.get_sender(), pto.get_receiver(), pto.get_body());
           //converting string to vector bytes
           let vec_raw = raw_str.as_bytes().to_vec();
-          warn!("Returnn protocol{:?}",raw_str);
           Ok(vec_raw)
      }
 }
