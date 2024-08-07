@@ -49,6 +49,17 @@ pub struct BaseProto{
      to:String
 }
 
+impl BaseProto{
+     pub fn create(alias:String, body:String, to:String)->Self{
+          let body_stripped = body.replace("\0", "");
+          BaseProto{
+               alias,
+               body:body_stripped,
+               to   
+          }
+     }
+}
+
 impl Proto<String,String,String> for BaseProto{
      ///Returns the client id `SAME AS THE USERNAME`
      /// 
