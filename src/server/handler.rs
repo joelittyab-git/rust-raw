@@ -1,8 +1,8 @@
-use std::{any::Any, io::{Read, Write}, net::TcpStream, process::{exit, ExitCode}, rc, sync::{mpsc::{Receiver, Sender}, Arc, Mutex, MutexGuard}};
-
-
+use std::{io::{Read, Write}, net::TcpStream, sync::{mpsc::{Receiver, Sender}, Arc, Mutex, MutexGuard}};
 use log::{error, info, warn};
 
+
+use crate::server::protocol::res::{Response, Status};
 use crate::server::protocol::BaseProtocol;
 use super::{container::ClientReceiverContainer, error::{ServerError,ThreadError}, protocol::{pto::{BaseProto, Proto}, Data, DataTransferProtocol, DataTransferProtocolParsed}};
 
@@ -132,9 +132,7 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                          continue;
                     }
                };
-
                let to = parsed.get_to().to_string();
-
                let alias = parsed.get_client_id().to_string();
 
                //Base proto instance creation to transfer data through channel
@@ -145,10 +143,14 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                     error!("Error sending data though stream from sender to receiver thread {{{:?}}}", e);
                };
 
-
-               println!("Sent data");
-
-               
+               let res = Response::generate_res(Status::Success, "The message has been dispatched from sender handler".to_string());
+               match self.stream.write(res.as_bytes()){
+                    Err(e)=>{
+                         error!("Error occured while sending response status to client {{{e}}}")
+                    },
+                    _=>()
+               };
+               info!("Message has been dispacthed to {username}");
 
           }
      }
