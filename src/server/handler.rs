@@ -1,10 +1,10 @@
-use std::{io::Read, net::TcpStream, rc, sync::{mpsc::{Receiver, Sender}, Arc, Mutex, MutexGuard}};
+use std::{any::Any, io::{Read, Write}, net::TcpStream, process::{exit, ExitCode}, rc, sync::{mpsc::{Receiver, Sender}, Arc, Mutex, MutexGuard}};
 
 
 use log::{error, warn};
 
 use crate::server::protocol::BaseProtocol;
-use super::{container::ClientReceiverContainer, error::ServerError, protocol::{pto::{BaseProto, Proto}, Data, DataTransferProtocol, DataTransferProtocolParsed}};
+use super::{container::ClientReceiverContainer, error::{ServerError,ThreadError}, protocol::{pto::{BaseProto, Proto}, Data, DataTransferProtocol, DataTransferProtocolParsed}};
 
 /// A struct representing a stream handler
 /// Handles a stream exclusiive to one transmit type:['Send'] or ['Receive']
@@ -83,10 +83,18 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                let mut buf:[u8;1024] = [0;1024];
 
                //handles if the reading of stream returns an error
-               if let Err(e) = self.stream.read(&mut buf){
-                    error!("An error occured while reading stream {{{}}}", e);
-                    continue;
+               match self.stream.read(&mut buf){
+                    Err(e)=>{
+                         error!("An error occured while reading stream {{{}}}", e);
+                         continue;
+                    },
+                    Ok(0)=>{       //handles disconnected stream, when 0 data is read
+                         warn!("Stream has disconnected");
+                         break;
+                    },
+                    _=>()
                };
+               println!("{:?}", buf);
 
                //parses read data
                let parsed = match self.protocol.parse(Data::Utf8(buf)){
@@ -104,8 +112,51 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                //arc clone and locking to read data
                let cloned_rcp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>> = rcp.clone();
                let rcp:MutexGuard<Vec<ClientReceiverContainer<BaseProto>>> = cloned_rcp.lock().unwrap();
+               let cli_sender = match self.search_rcp_sender_for(username, &rcp){
+                    Some(sender)=>sender,
+                    None=>{
+                         todo!();
+                         // self.stream.write(buf)
+                    }
+               };
+
+               
 
           }
+
+          // //buffer to read input data
+          // let mut buf:[u8;1024] = [0;1024];
+
+          // //handles if the reading of stream returns an error
+          // println!("Waiting to read data");
+          // if let Err(e) = self.stream.read(&mut buf){
+          //      error!("An error occured while reading stream {{{}}}", e);
+          // };
+          // println!("{:?}", buf);
+
+          // //parses read data
+          // let parsed = match self.protocol.parse(Data::Utf8(buf)){
+          //      Err(e)=>{
+          //           error!("An error occured while parsing protocol {{{:?}}}", e);
+          //           exit(1);
+          //      },
+          //      Ok(s)=>s
+          // };
+
+          // //extracts data from parsed
+          // let username = parsed.get_to();
+
+          // //rcp search for parsed username
+          // //arc clone and locking to read data
+          // let cloned_rcp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>> = rcp.clone();
+          // let rcp:MutexGuard<Vec<ClientReceiverContainer<BaseProto>>> = cloned_rcp.lock().unwrap();
+          // let cli_sender = match self.search_rcp_sender_for(username, &rcp){
+          //      Some(sender)=>sender,
+          //      None=>{
+          //           todo!();
+          //           // self.stream.write(buf)
+          //      }
+          // };
      }
 
 
@@ -120,7 +171,7 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
           loop {
                let pto = match chx.recv(){
                     Err(e)=>{
-                         return Result::Err(ServerError::ChannelReceiveError(e));
+                         return Result::Err(ServerError::ThreadError(ThreadError::ChannelReceiveError(e)));
                     },
                     Ok(t)=>t
                };
@@ -128,6 +179,17 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                let raw = self.protocol.to_raw(pto);
                //todp
           }
+     }
+
+     fn search_rcp_sender_for<X>(&self,username:&String, rcp:&Vec<ClientReceiverContainer<X>>)->Option<Sender<X>>
+     where X:Proto<String,String,String>{
+          for crp in rcp{
+               if crp.get_alias().to_string()==username.to_string(){
+                    return crp.get_sender();
+               }
+          }
+
+          return None;
      }
 }
 
