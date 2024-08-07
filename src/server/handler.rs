@@ -1,7 +1,7 @@
 use std::{any::Any, io::{Read, Write}, net::TcpStream, process::{exit, ExitCode}, rc, sync::{mpsc::{Receiver, Sender}, Arc, Mutex, MutexGuard}};
 
 
-use log::{error, warn};
+use log::{error, info, warn};
 
 use crate::server::protocol::BaseProtocol;
 use super::{container::ClientReceiverContainer, error::{ServerError,ThreadError}, protocol::{pto::{BaseProto, Proto}, Data, DataTransferProtocol, DataTransferProtocolParsed}};
@@ -69,6 +69,7 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
      }
 
      /// Handles [TransmitService::Send] type client 
+     /// `If handler reads 0 data from stream buffer it disconnects from client stream`
      /// 
      /// # Arguments
      /// - `chx`: A [std::sync::mpsc::Sender<T>] object associated with a channel. Since this method handles [TransmitService::Send] type clients it awaits for 
@@ -92,9 +93,10 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                          warn!("Stream has disconnected");
                          break;
                     },
-                    _=>()
+                    _=>{
+                         info!("Read data");
+                    }
                };
-               println!("{:?}", buf);
 
                //parses read data
                let parsed = match self.protocol.parse(Data::Utf8(buf)){
@@ -107,56 +109,48 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
 
                //extracts data from parsed
                let username = parsed.get_to();
+               
 
                //rcp search for parsed username
                //arc clone and locking to read data
                let cloned_rcp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>> = rcp.clone();
                let rcp:MutexGuard<Vec<ClientReceiverContainer<BaseProto>>> = cloned_rcp.lock().unwrap();
-               let cli_sender = match self.search_rcp_sender_for(username, &rcp){
+               let client_chx_sender = match self.search_rcp_sender_for(username, &rcp){
                     Some(sender)=>sender,
                     None=>{
-                         todo!();
-                         // self.stream.write(buf)
+                         let s = "error getting sender".as_bytes();
+                         self.stream.write(s).expect("Something went wrong while printing error message back to client");
+                         continue;
                     }
                };
+
+               //unpacking parsed data
+               let body = match parsed.get_body(){
+                    Ok(body)=>body.to_string(),
+                    Err(e)=>{
+                         warn!("Could not parse body {{{:?}}}",e);
+                         continue;
+                    }
+               };
+
+               let to = parsed.get_to().to_string();
+
+               let alias = parsed.get_client_id().to_string();
+
+               //Base proto instance creation to transfer data through channel
+               let pto = BaseProto::create(alias, body, to);
+
+               //sending data through channel
+               if let Err(e) = client_chx_sender.send(pto){
+                    error!("Error sending data though stream from sender to receiver thread {{{:?}}}", e);
+               };
+
+
+               println!("Sent data");
 
                
 
           }
-
-          // //buffer to read input data
-          // let mut buf:[u8;1024] = [0;1024];
-
-          // //handles if the reading of stream returns an error
-          // println!("Waiting to read data");
-          // if let Err(e) = self.stream.read(&mut buf){
-          //      error!("An error occured while reading stream {{{}}}", e);
-          // };
-          // println!("{:?}", buf);
-
-          // //parses read data
-          // let parsed = match self.protocol.parse(Data::Utf8(buf)){
-          //      Err(e)=>{
-          //           error!("An error occured while parsing protocol {{{:?}}}", e);
-          //           exit(1);
-          //      },
-          //      Ok(s)=>s
-          // };
-
-          // //extracts data from parsed
-          // let username = parsed.get_to();
-
-          // //rcp search for parsed username
-          // //arc clone and locking to read data
-          // let cloned_rcp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>> = rcp.clone();
-          // let rcp:MutexGuard<Vec<ClientReceiverContainer<BaseProto>>> = cloned_rcp.lock().unwrap();
-          // let cli_sender = match self.search_rcp_sender_for(username, &rcp){
-          //      Some(sender)=>sender,
-          //      None=>{
-          //           todo!();
-          //           // self.stream.write(buf)
-          //      }
-          // };
      }
 
 
