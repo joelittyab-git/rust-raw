@@ -179,7 +179,7 @@ impl DataTransferProtocol<String,String,String> for BaseProtocol{
      /// - `pto` of type [Proto] which contains data
      /// 
      /// # Returns 
-     /// - `Result<Vec<u8>, ProtocolError>` a result which contains the vector of u8 bytes
+     /// - `Result<Vec<u8>, ProtocolError>` a result which contains the vector of u8 bytes of data
      fn to_raw<T:Proto<String,String,String>>(&self, pto:T)->Result<Vec<u8>, ProtocolError> {
           //formatting to protocol standard
           let raw_str = format!("{}-{}\n{}", pto.get_sender(), pto.get_receiver(), pto.get_body());

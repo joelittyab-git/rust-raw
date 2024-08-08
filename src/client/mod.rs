@@ -22,5 +22,8 @@ pub fn create_client(username:String){
      let mut  read_buf = [0;1028];
      c.read(&mut read_buf).expect("Something went wrong while reading from server...");
      println!("{}", String::from_utf8_lossy(&read_buf));
+     read_buf = [0;1028];
+     println!("{}", String::from_utf8_lossy(&read_buf));
+     c.read(&mut read_buf).expect("Something went wrong while reading from server...");
      c.shutdown(std::net::Shutdown::Both).expect("Something went wrong while trying to shutdown stream");
 }
