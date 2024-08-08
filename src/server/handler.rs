@@ -150,7 +150,7 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                     },
                     _=>()
                };
-               info!("Message has been dispacthed to {username}");
+               info!("Message has been dispactched to {{ username: {username} }} thread listener...");
 
           }
      }
@@ -162,18 +162,41 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
      /// - `chx`: A [std::sync::mpsc::Receiver<T>] object associated with a channel. Since this method handles [TransmitService::Receive] type clients it awaits for 
      ///            incoming data from a [std::sync::mpsc::Sender<T>] obejct associated with some other thread stored in the [crate::server] 
      ///            pool of [crate::server::container::ClientSenderContainer]
-     pub fn handle_client_receive(&self, chx:Receiver<BaseProto>)->Result<(), ServerError>{
+     pub fn handle_client_receive(&mut self, chx:Receiver<BaseProto>)->Result<(), ServerError>{
           warn!("Received and handling receive");
           loop {
                let pto = match chx.recv(){
                     Err(e)=>{
                          return Result::Err(ServerError::ThreadError(ThreadError::ChannelReceiveError(e)));
                     },
-                    Ok(t)=>t
+                    Ok(t)=>{
+                         warn!("Received message");
+                         t
+                    }
                };
 
-               let raw = self.protocol.to_raw(pto);
-               //todp
+               //extracting usernake from prtocol transfer object
+               let username = pto.get_receiver().to_owned();
+
+               //attempting to convert pto to raw bytes
+               let raw = match self.protocol.to_raw(pto){
+                    Ok(byte_vec)=>byte_vec,
+                    Err(e)=>{
+                         error!("Error converting pto to raw bytes in handle_client_receive {{{:?}}}",e);
+                         continue;
+                    }
+               };
+
+               //writes to receive client stream
+               match self.stream.write(&raw){
+                    Err(e)=>{
+                         error!("Error writing {{ {} }}", e);
+                    },
+                    _=>()
+               };
+
+               //logs
+               info!("Successfully written to {{ username: {}; type: RECEIVE }}", username)
           }
      }
 
