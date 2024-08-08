@@ -1,4 +1,4 @@
-use std::{io::Error, sync::mpsc::RecvError};
+use std::{fmt::Display, io::Error, sync::mpsc::RecvError};
 use crate::server::protocol::error::ProtocolError;
 /// An enum representing various types of errors that can occur in the application.
 ///
@@ -30,4 +30,42 @@ pub enum ServerError {
 pub enum ThreadError {
      ChannelReceiveError(RecvError),
      ChannelSendError(RecvError),
+}
+
+/// Display implementation for ServerError
+impl Display for ServerError{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AddressBindError(e)=>{
+               write!(f,"{{ error: AddressBindError; info: {} }}",e)
+            },
+            Self::ProtocolError(e)=>{
+               write!(f, "{{ error: ProtocolError; info: {} }}", e)
+            },
+            Self::StreamAcceptError(e)=>{
+               write!(f, "{{ error: StreamAcceptError; info: {} }}", e)
+            },
+            Self::ThreadError(e)=>{
+               write!(f,"{{ error: ThreadError; info: {} }}",e )
+            },
+            Self::StreamReadError(e)=>{
+               write!(f, "{{ error: StreamReadError; info: {} }}", e)
+            }
+        }
+    }
+}
+
+/// Display implementation for ThreadError
+impl Display for ThreadError{
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+          match self {
+               Self::ChannelReceiveError(e)=>{
+                    write!(f, "{{ error: ChannelReceiveError; info: {} }}", e)
+               },
+               Self::ChannelSendError(e)=>{
+                    write!(f, "{{ error: ChannelSendError; info: {}  }}", e)
+               }
+     
+          }
+     }
 }
