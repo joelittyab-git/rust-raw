@@ -19,7 +19,7 @@ use std::{io::Read, net::{
 }, Arc, Mutex, MutexGuard},thread:: {sleep, spawn},
  time::Duration
 };
-use log::{error, info, warn};
+use log::{error, info};
 
 use error::ServerError;
 use container::{ClientReceiverContainer, ClientSenderContainer};
@@ -154,7 +154,6 @@ impl Server{
                };
 
           }
-
           Ok(())
      }
 
