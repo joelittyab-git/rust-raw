@@ -75,10 +75,8 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
      /// - `chx`: A [std::sync::mpsc::Sender<T>] object associated with a channel. Since this method handles [TransmitService::Send] type clients it awaits for 
      ///            incoming data in streams to send to the Receiver type stored in [crate::server] pool
      ///            Type `<T>` should be a pto object that implements Proto to transfer data between threads
-     pub fn handle_client_send<T,A,B,C>(&mut self, _chx:Sender<T>, rcp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>>)
-     where T:Proto<A,B,C,>{
+     pub fn handle_client_send(&mut self, rcp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>>){
           warn!("Received and handling send");
-
           loop {
                //buffer to read input data
                let mut buf:[u8;1024] = [0;1024];
