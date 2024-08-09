@@ -58,6 +58,14 @@ impl BaseProto{
                to   
           }
      }
+
+     pub fn from<T:Proto<String,String,String>>(c:T)->BaseProto{
+          BaseProto{
+               alias:c.get_client_id().to_string(),
+               body:c.get_body().to_string(),
+               to:c.get_receiver().to_string()
+          }
+     }
 }
 
 impl Proto<String,String,String> for BaseProto{
