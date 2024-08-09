@@ -10,7 +10,6 @@ use crate::server::protocol::error::ProtocolError;
 /// - `ProtocolError`: Error associated with protocol create, read and update operations
 /// - `ThreadError`: Error associated with multithreaded operations
 
-#[derive(Debug)]
 pub enum ServerError {
      AddressBindError(Error),
      StreamAcceptError(Error),
@@ -69,3 +68,10 @@ impl Display for ThreadError{
           }
      }
 }
+
+/// Debug implementation for ServerError
+impl std::fmt::Debug for ServerError{
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+         write!(f,"{}", self)
+     }
+ }
