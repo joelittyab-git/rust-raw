@@ -107,7 +107,7 @@ impl Server{
                let mut handler:StreamHandler<BaseProtocol> =  match default_new(stream, client_service.clone()){
                     Ok(e)=>e,
                     Err(e)=>{
-                         error!("Could not initialize stream handler due to... {:?}", e);
+                         error!("Could not initialize stream handler due to... {}", e);
                          continue;
                     }
                };
@@ -154,7 +154,6 @@ impl Server{
                };
 
           }
-          Ok(())
      }
 
      /// method to identify request type from stream data {initial handshake}
