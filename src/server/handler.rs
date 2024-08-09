@@ -75,7 +75,7 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
      /// - `chx`: A [std::sync::mpsc::Sender<T>] object associated with a channel. Since this method handles [TransmitService::Send] type clients it awaits for 
      ///            incoming data in streams to send to the Receiver type stored in [crate::server] pool
      ///            Type `<T>` should be a pto object that implements Proto to transfer data between threads
-     pub fn handle_client_send<T,A,B,C>(&mut self, chx:Sender<T>, rcp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>>)
+     pub fn handle_client_send<T,A,B,C>(&mut self, _chx:Sender<T>, rcp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>>)
      where T:Proto<A,B,C,>{
           warn!("Received and handling send");
 
@@ -101,7 +101,7 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                //parses read data
                let parsed = match self.protocol.parse(Data::Utf8(buf)){
                     Err(e)=>{
-                         error!("An error occured while parsing protocol {{{:?}}}", e);
+                         error!("An error occured while parsing protocol {}", e);
                          continue;
                     },
                     Ok(s)=>s
@@ -128,7 +128,7 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                let body = match parsed.get_body(){
                     Ok(body)=>body.to_string(),
                     Err(e)=>{
-                         warn!("Could not parse body {{{:?}}}",e);
+                         warn!("Could not parse body {}",e);
                          continue;
                     }
                };
@@ -140,13 +140,13 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
 
                //sending data through channel
                if let Err(e) = client_chx_sender.send(pto){
-                    error!("Error sending data though stream from sender to receiver thread {{{:?}}}", e);
+                    error!("Error sending data though stream from sender to receiver thread {}", e);
                };
 
                let res = Response::generate_res(Status::Success, "The message has been dispatched from sender handler".to_string());
                match self.stream.write(res.as_bytes()){
                     Err(e)=>{
-                         error!("Error occured while sending response status to client {{{e}}}")
+                         error!("Error occured while sending response status to client {{ {e} }}");
                     },
                     _=>()
                };
@@ -182,7 +182,7 @@ impl <P:DataTransferProtocol<String,String,String>> StreamHandler<P>{
                let raw = match self.protocol.to_raw(pto){
                     Ok(byte_vec)=>byte_vec,
                     Err(e)=>{
-                         error!("Error converting pto to raw bytes in handle_client_receive {{{:?}}}",e);
+                         error!("Error converting pto to raw bytes in handle_client_receive {}",e);
                          continue;
                     }
                };

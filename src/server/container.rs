@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::sync::mpsc::{Sender, Receiver};
 use std::thread:: JoinHandle;
 
@@ -166,5 +167,19 @@ impl <T>ClientSenderContainer<T> {
 
      pub fn get_alias(&self)->&String{
           &self.to_alias
+     }
+}
+
+/// Display implementation for ClientReceiverContainer
+impl <T>Display for ClientReceiverContainer<T> {
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+          write!(f, "{{ id: {}; alias: {}; type: RECEIVE }}", self.id, self.alias)
+     }
+}
+
+/// Display implementation for ClientSenderContainer
+impl <T>Display for ClientSenderContainer<T>{
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+          write!(f, "{{ id: {}; to_alias: {}; type: SEND }}", self.id, self.to_alias)
      }
 }
