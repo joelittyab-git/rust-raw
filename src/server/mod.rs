@@ -139,7 +139,7 @@ impl Server{
                     TransmitService::Send(to)=>{
                          let cloned_scp:Arc<Mutex<Vec<ClientReceiverContainer<BaseProto>>>> = self.receive_container_pool.clone();
                          let handle = spawn(move ||{
-                              handler.handle_client_send(sender, cloned_scp);
+                              handler.handle_client_send(cloned_scp);
                          });
                          info!("Accepted incoming request from {addr} -- {{ id: {}; to_alias: {} }}", key, to);              //logging
                          //container creation for this above handler and channel compoenents
