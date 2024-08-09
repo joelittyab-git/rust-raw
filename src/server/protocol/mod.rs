@@ -3,7 +3,6 @@ pub mod pto;
 pub mod res;
 
 use error::ProtocolError;
-use log::warn;
 use pto::Proto;
 
 use super::handler::TransmitService;
@@ -101,23 +100,6 @@ pub trait DataTransferProtocol<I,S,B> {
 pub enum Data {
     Utf8([u8;1024]),
     Utf16([u16;1024])
-}
-
-/// An enum representing various encodings of data that can be sent through stream
-/// ['Utf8'] encodes all unicode caharacters
-/// ['Utf16'] encodes one or two 16-bit code units to represent each character.
-/// This is an enum represent what type of encoding does a handler handle
-///
-/// # Variants
-///
-/// - [`Utf8`]: Indicates a stream could not bind to its host:port
-/// - [`Utf16`]: Indicates that an incoming stream could not have been accepted
-/// 
-/// ['Utf16']: Data::Utf16
-/// ['Utf8']: Data::Utf8
-pub enum DataType {
-    Utf8,
-    Utf16
 }
 
 impl BaseProtocol{
