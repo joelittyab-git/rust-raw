@@ -5,7 +5,7 @@ struct Authentication{
 
 }
 //Developement feature.
-//To be implemented
+//To be implemented [docs]
 #[cfg(feature="development")]
 trait BaseUserAuth<A,B>{
      fn auth(username:A, password:B)->Option<User<A,B>>;
